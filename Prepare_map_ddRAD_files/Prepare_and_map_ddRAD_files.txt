@@ -1,0 +1,44 @@
+
+#Use cutadapt to remove adaptors from RAD data using wildcards in adaptor
+cutadapt -a TTAAGATCGGAAGAGCA -A CCTGCANNNNNNGATCGGAAGA -m 50 -o DNA_001_RAD.1.cutadapt.fastq.gz -p DNA_001_RAD.2.cutadapt.fastq.gz DNA_001_RAD.1.fastq.gz -p DNA_001_RAD.2.fastq.gz 
+
+#De-multiplex using the process_radtags module of STACKS
+process_radtags -P -p FASTQ2_1 -o ./ -b Barcode_six --renz_1 sbfI --renz_2 mseI -E phred33 -r -c -q -i DNA_001_RAD.2.cutadapt.fastq.gz --adapter_1 ACACTCTTTCCCTACACGACGCTCTTCCGATCT --adapter_2 GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT --adapter_mm 2
+
+#PEAR to merge overlapping reads
+for gfile in $(ls *1.fq);
+  do pear-0.9.6-bin-32 -f $gfile \
+          -r ${gfile%.1.fq}.2.fq \
+          -o ${gfile/.assembled.fq/} \
+          -y 100000000000 \
+          -n 50 \
+          -j 2  >> pear_files.log 2>&1
+done
+
+#Prepare each reference genome for mapping, example below for Arctocephalus gazella
+
+python stampy.py -G LepWed GCF_000349705.1_LepWed1.0_genomic.fna
+
+python stampy.py -g LepWed -H LepWed 
+
+#Map each sample with the subsitution rate taken from Higdon et al 2007 https://doi.org/10.1186/1471-2148-7-216
+#example
+
+python stampy.py -t 16 -g LepWed -h LepWed --substitutionrate=0.0352 -o cut.DNA_0753_Lib6_Uppsala_PE_125_150402_AC6J1JANXX_ddRAD_ACTTCC_Index9_sbfI_mseI_Hal_gry_Grey174.assembled.sam -M cut.DNA_0753_Lib6_Uppsala_PE_125_150402_AC6J1JANXX_ddRAD_ACTTCC_Index9_sbfI_mseI_Hal_gry_Grey174.1.fq.assembled.fastq
+
+
+
+#Sort samples and add read groups using information in the file names
+for i in *.sam; do java -Xmx${mem} -jar /sw/apps/bioinfo/picard/1.141/milou/picard.jar SortSam I=$i  O=${i%.sam}_sorted.bam SO=coordinate; done
+ 
+for j in *_sorted.bam; do java -Xmx${mem} -jar /sw/apps/bioinfo/picard/1.141/milou/picard.jar AddOrReplaceReadGroups INPUT=$j RGID=`ls -1 "$j"|cut -f 2 -d '_'` RGLB=`ls -1 "$j"|cut -f 3 -d '_'` RGPL=Illumina RGPU=`ls -1 "$j"|cut -f 16 -d '_'| cut -f 1 -d '.'`"."`ls -1 "$j"|cut -f 2 -d '_'`"_"`ls -1 "$j"|cut -f 7 -d '_'`"_"`ls -1 "$j"|cut -f 3 -d '_'` RGSM=`ls -1 "$j"|cut -f 16 -d '_'| cut -f 1 -d '.'` OUTPUT=${j%_sorted.bam}_readgrp_sorted.bam; done
+
+for k in *_readgrp_sorted.bam; do samtools index $k; done
+
+
+#when samples were sequenced across multiple libraries or lanes they were merged. 
+
+sample_ID=`ls -1 ${1}|cut -f 1,2 -d '_'`
+indiv_ID=`ls -1 ${1}|cut -f 16 -d '_'| cut -f 1 -d '.'` 
+
+java -Xmx${mem} -jar picard.jar MergeSamFiles I= $sample_ID*$indiv_ID".assembled_readgrp_sorted.bam" I= $sample_ID*$indiv_ID".assembled_readgrp_sorted.bam" O=$sample_ID"_"$indiv_ID"_merged.bam"

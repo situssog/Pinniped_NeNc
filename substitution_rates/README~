@@ -1,0 +1,14 @@
+The scripts in this folder were used to extract the CDS from the wo otarrid genomes (Arctocephalus gazella and Zalophus californianus), for which no annotation was available.
+Script 1 extracts the coordinates from the blast output.
+Script 2 extracts the sequences from scaffolds.
+Script 3 Builds the alignments for the 5 pinnipeds (Odobenus, Neomonachus, Leptonychotes, Arctocephalus, Zalophus) + 2 outgroups (Canis, Ailuropoda).
+script 4 removes codons with gaps in more than half of the sequences.
+script 5 removes misaligned regions using HMMcleaner.
+
+For substitution mapping we used two programs available at
+
+bppml performs branch-length and parameter optimisation for each alignment.
+mapnh maps and counts non-synonymous and synonymous substitutions for each alignment.
+
+As an output N, Nsites, S and Ssites estimates are obtained for each alignment and are averaged for each species in order to obtain global dN and dS estimates.
+

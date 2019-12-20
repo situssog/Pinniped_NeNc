@@ -1,0 +1,127 @@
+# ==================================================
+# Documents and scripts written for the manuscript:
+# Determinants of genetic variation across eco-evolutionary scales in pinnipeds and their implications for the Anthropocene
+# Written by: Claire R. Peart, Sergio Tusso, Saurabh D. Pophaly, Fidel Botero-Castro
+# +++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+####All preparation and mapping of the files in the folder Prepare_and_map_ddRAD_files
+
+##### Making the SFS and summary statistics #####
+#The scripts are in the ANGSD folder
+
+#Format the output of the clustRAD pipeline for ANGSD, removing small and X linked scaffolds
+python format_clusters.py [Input file] [Output file] [Exclusion file]
+
+#Run ANGSD
+for i in *.bamlist; do sbatch Generic_angsd_script.bash $i; done
+
+#Summarise per chr thetas
+for i in *pestPG; do Rscript compilestats.r $i; done 
+
+#Summarise per site thetas
+for i in *.bamlist; do sbatch Submit_per_site_pi_tajD.bash $i; done
+
+#Summarise thetas within and outside genes using the refseq annotation
+Rscript Thetas_in_outside_genes.r F50__Svalbard__LIB6__Odo_ros_0_8_per_site.thetas Walrus_protein_coding_gene_locations 24 Odo_ros_pi_within_genes 0 Odo_ros_pi_outside_genes
+
+
+
+####Make the PCA####
+for i in *.bamlist; do sbatch Generic_angsd_script_mafs.bash $i; done
+#for each species run the code below
+N_SITES=`zcat All_Hal_gry_maf.mafs.gz| tail -n+2 | wc -l`
+echo $N_SITES
+gunzip All_Hal_gry_maf.geno.gz
+N_ind=`cat All_bamlist|wc -l`
+echo $N_ind
+ngsTools/ngsPopGen/ngsCovar -probfile All_Hal_gry_maf.geno -outfile All_Hal_gry_maf.covar -nind $N_ind -nsites $N_SITES -call 0 -norm 0
+
+
+
+#####    Demographic inference - dadi ######
+## This script shows the pipeline used for demographic inference using dadi
+# Within the dadi folder, there is a folder with scripts for each specific demographic model
+# Folders included are the different models described in the manuscript (0P, 2Pexp, 2Pins, 3P, 4Pexp and 4Pins)
+# Within each model, there are several scripts:
+
+# the input file is the sfs produced in ANGSD - sfs.txt 
+# the script 1dSFS_dadi.sh runs dadi giving as output 100 bootstraps in a single file (file_bootstraps.txt):
+# the script uses the python script GBS_bottle.py which actually runs dadi, and the later uses the script demographics1pop.py which contains the different demographic models. 
+sbatch 1dSFS_dadi.sh sfs.txt
+
+# then the output file_bootstraps.txt is processed to extract optimised values: 
+# in order to simplify the run, the input for the script is the same sfs file, from which the script extracts the name of the output file:
+# the scvript uses the R script mean_dadi_parameters_withlikelihood.R to process the file:
+# the output of the script is a single line file with means and variance for each of the estimated parameters. 
+sbatch cleaning_1dSFS_dadi.sh sfs.txt
+
+# Tables are compiled:
+ls -1 ./ | grep -v "\." | grep -v old_analyses > list_folders.txt
+for i in $(cat list_folders.txt)
+do table_used=$i
+table_used_heads=$(echo $table_used | sed 's/_R.//g')
+grep sizeFiltering old_analyses/summary_table_$table_used_heads.txt > summary_table_$table_used.txt
+grep "" $table_used/withlikelihood_1dsfs_mean_*txt | sed 's/'$table_used'\/withlikelihood_1dsfs_mean_//g' | sed 's/.txt:/\t/g' | sed 's/__/\t/g' | sed 's/_1_/\t100\t/g' | sed 's/_0_8_/\t80\t/g' | sed 's/_0_5_/\t50\t/g' >> summary_table_$table_used.txt
+done
+
+# then We used the an R script to compare likelihood between models:
+# compiling_tables.R
+
+
+
+
+#### Linear regression models and correlations with population genetics parameters
+# this analyses were done using the script: LM_correlations.R
+# the input file is the compiled table produced from the dadi analyses. 
+
+
+
+
+####Running the PSMC' analyses####
+#The scripts are in the MSMC folder
+#Download the fastq files from SRA
+#example
+fastq-dump -I --origfmt --gzip --split-files SRR317819 --split-3
+
+#Trim the adaptors and qaulity trim
+for i in *1.fastq.gz; do cutadapt -m 1 -q 5 -a AGATCGGAAGAGC -A AGATCGGAAGAGC -o ${i%1.fastq.gz}trimmed_q5.1.fq -p ${i%1.fastq.gz}trimmed_q5.2.fq $i ${i%1.fastq.gz}2.fastq.gz; done
+
+#Map the reads
+start_name=`ls -1 ${1}|cut -f 1 -d '_'`
+
+bwa mem -M GCF_000349705.1_LepWed1.0_genomic.fna ${1} $start_name"_trimmed_q5.2.fq.gz" -t 16 | samtools view -hb - -o $start_name"_trimmed_q5.bam"
+
+#sort and add the readgroups using .jar files from Picard tools
+java -jar SortSam.jar I=SRR314672_trimmed_q5.bam O=/dev/stdout SO=coordinate | java -jar AddOrReplaceReadGroups.jar I=/dev/stdin RGID=SRR314672 RGLB=Solexa-66887 RGPL=Illumina RGPU=SRR314672 RGSM=SAMN00672463 OUTPUT=SRR314672_trimmed_q5_readgrp_sorted.bam
+
+#Merge files and remove duplicates 
+java -jar MergeSamFiles.jar $(printf ' I= %s' *duprm.bam) O= LepWed_merged.bam 
+
+samtools index LepWed_merged.bam
+
+java -jar MarkDuplicates.jar REMOVE_DUPLICATES=true I=LepWed_merged.bam O=LepWed_merged_duprm.bam METRICS_FILE=LepWed_merged_dup.met
+
+samtools index LepWed_merged_duprm.bam
+
+java -Xmx50g -jar /sw/apps/bioinfo/GATK/3.4.0/GenomeAnalysisTK.jar -T RealignerTargetCreator -R GCF_000349705.1_LepWed1.0_genomic.fna -I LepWed_merged_duprm.bam -o LepWed_merged_duprm.intervals
+
+java -Xmx50g -jar /sw/apps/bioinfo/GATK/3.4.0/GenomeAnalysisTK.jar -T IndelRealigner -R GCF_000349705.1_LepWed1.0_genomic.fna -I LepWed_merged_duprm.bam -targetIntervals LepWed_merged_duprm.intervals -o LepWed_merged_duprm_realigned.bam
+
+#submit bamcaller for example
+./submit_bamcaller_msmc_LepWed.bash
+
+#Generate mappability mask using the makeMappabilityMask.py script from MSMCtools
+./Generate_mappability_mask_LepWed.bash
+
+#Generate the MSMC input files 
+module load python/3.5.0
+for i in *.vcf.gz; do python3 /msmc/msmc-tools-master/generate_multihetsep.py --mask=${i%.vcf.gz}_mask.bed.gz --mask=/Weddell_genome_mask/Weddell_${i%.vcf.gz}.mask.bed.gz $i > ${i%.vcf.gz}.multihetsep.txt; done
+
+#Run MSMC
+./Run_msmc_LepWed.bash
+
+#Run LastZ to identify X linked scaffolds, command below for each scaffold in canFam3
+
+lastz ${i} GCA_000321225.1_Oros_1.0_genomic.fasta M=254 K=4500 L=3000 Y=15000 C=2 T=2 --matchcount=10000 --format=general:name1,start1,end1,length1,name2,start2,end2,strand2 |sort -k2,2n >${i}_walrus.lastz
+
