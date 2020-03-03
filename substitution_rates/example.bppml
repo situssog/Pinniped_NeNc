@@ -1,0 +1,21 @@
+input.sequence.file = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta
+alphabet = Codon(letter=DNA)
+genetic_code=Standard
+input.sequence.format = Fasta
+input.sequence.sites_to_use=all
+input.tree.format=Newick
+input.tree.file = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.elagtree
+output.tree.file = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.tr
+input.sequence.max_gap_allowed=100%
+input.sequence.max_unresolved_allowed=100%
+nonhomogeneous = no
+model=YN98(initFreqs=observed, frequencies = F3X4)
+input.sequence.remove_stop_codons=yes
+input.sequence.remove_saturated_sites=yes
+count.max=3
+optimization.ignore_parameters=YN98.*theta*
+optimization.profiler=ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.profiler
+output.info=ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.info
+optimization.message_handler=ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.msg
+output.estimates=ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.param
+rate_distribution=Constant

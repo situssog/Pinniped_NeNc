@@ -1,0 +1,22 @@
+DATA = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta
+alphabet = Codon(letter=DNA)
+genetic_code=Standard
+input.tree.file=ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.tr
+input.tree.format = Newick
+output.tree_with_id.file = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.nhx
+output.cluster_tree.file = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.cluster_join.tr
+input.sequence.file = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta
+input.sequence.format = Fasta
+input.sequence.sites_to_use = all
+input.sequence.max_gap_allowed = 100%
+input.sequence.remove_stop_codons=yes
+input.sequence.remove_saturated_sites = yes
+map.type = DnDs
+count.max=3
+test.global = no
+test.branch = no
+test.branch.neighbor = yes
+test.branch.negbrlen = no
+test.branch.auto_cluster = Marginal(threshold=3)
+output.counts=PerType(prefix=ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.CountsTree)
+param = ENSG00000000003_macse_NT_codon_pruned_Hmm5.fasta.param

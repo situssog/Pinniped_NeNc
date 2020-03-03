@@ -1,22 +1,35 @@
-This folders contains the scripts used to extract the CDS from the two otarrid genomes (Arctocephalus gazella and Zalophus californianus), for which no annotation was available and to obtain dN/dS estimates from coding sequences.
+This folder contains the scripts used to extract the CDS from the two otarrid genomes (Arctocephalus gazella and Zalophus californianus), for which no annotation was available and to obtain dN/dS estimates from coding sequences.
+
 Script 1 extracts the coordinates from the blast output.
-Script 2 extracts the sequences from scaffolds.
-Script 3 Builds the alignments for the 5 pinnipeds (Odobenus, Neomonachus, Leptonychotes, Arctocephalus, Zalophus) + 2 outgroups (Canis, Ailuropoda).
+Script 2 orders coordinates to be extracted from scaffolds.
+script 3 extracts the sequences from scaffolds.
+Script 4 builds the alignments for the 5 pinnipeds (Odobenus, Neomonachus, Leptonychotes, Arctocephalus, Zalophus) + 2 outgroups (Canis, Ailuropoda).
+Script 5 performs alignment with MACSE, with modified values for the -gap_op and -gap_ext_ratio parameters allowing for lower costs of gap introduction and extension. Additionally, script 5b performs alignment for some hard-to-align sequences to authorize more flexible values for frameshifts and stop codons in sequences recovered from unnanotated genomes.
+script 6 replaces incomplete codons with gaps and then removes codons containing gaps in more than half of the sequences.
+script 7 filters and removes misaligned regions using HMMcleaner.
 
-Alignment with macse was performed using the following command line:
 
-java -jar macse -gap_op -gap_ext_ratio
-
-where the -gap op and -gap_ext_ratio allows for lower costs of gap introduction and extension. 
-
-script 4 removes codons with gaps in more than half of the sequences.
-script 5 removes misaligned regions using HMMcleaner.
-
-Substitution mapping was performed using the bppml and mapnh programs available at
-https://github.com/BioPP/bppsuite/releases/tag/v2.3.2 and https://github.com/BioPP/testnh/releases, respectively. Otherwise, pre-installation of the Bio++ libraries is required for compilation.
+The step of substitutions mapping was performed using the standalone executables of bppml and mapnh programs available at
+https://github.com/BioPP/bppsuite/releases/tag/v2.3.2 and https://github.com/BioPP/testnh/releases , respectively. 
+Otherwise, pre-installation of the Bio++ libraries is required for compilation.
 
 bppml (source code available at https://github.com/BioPP/bppsuite) performs branch-length and parameter optimisation for each alignment.
 mapnh (source code available at https://github.com/BioPP/testnh/) maps and counts non-synonymous and synonymous substitutions for each alignment using the optimised values from previous step.
 
-As an output, non-synonymous and synonymous counts (N and S) as well as the number of non-synonymous and synonymous sites are obtained for each alignment and averaged for each species in order to obtain global estimates.
+Both programs are run using a file containing the required parameters. Example parameter files are provided in example.bppml and example.mapnh.
+
+bppml param=<parameters_file>
+mapnh param=<parameters_file>
+
+As output of mapnh, non-synonymous and synonymous counts (N and S) are obtained for each alignment as branch lengths of the phylogeny. These counts are printed as trees in files with the suffixes ".CountsTree1.dnd"  and ".CountsTree2.dnd" for synonymous and non-synonymous counts, respectively.
+
+THe program ratioSite, authored by Nicolas Galtier, outputs the number of synonymous and non-synonymous sites for each alignment after correcting for the corresponding transversions/transitions ratio (kappa) as estimated with bppml. This value can be found in the output file of bppml with suffix ".param". NB: The alignment must not contain gaps but Ns for missing data.
+
+The program is run with the command-line
+
+ratioSite <alignment> <kappa>
+
+
+
+
 

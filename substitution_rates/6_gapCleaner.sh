@@ -4,7 +4,7 @@
 #SBATCH -p core
 #SBATCH -n 8 
 #SBATCH -t 06:00:00
-#SBATCH -J HMMCleaner
+#SBATCH -J alignCleaner
 
 software='/home/fboteroc/private/software'
 rawAlign='/proj/uppstore2017158/b2014050/private/substitution_rates/7spp/macse/lr_aligns'
